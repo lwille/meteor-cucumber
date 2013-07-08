@@ -1,7 +1,9 @@
 if(this.Cucumber) {
-  Cucumber.add_steps(function() {
-    this.defineStep(/I have an account/, function() {
+  Cucumber.addSteps(function() {
+    console.log('defining steps for account');
+    this.defineStep(/I have an account/, function(callback) {
       console.log('I have an account!');
+      callback();
     });
   });
 }
