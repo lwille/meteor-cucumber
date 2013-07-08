@@ -4,4 +4,6 @@ if(this.Cucumber) {
 
     callback(this);
   };
+
+  Cucumber.addListener(Cucumber.MeteorUtils.logSnippetsToConsole);
 }

@@ -41,16 +41,17 @@ Listener.prototype.real_hear = function(event, callback) {
     case 'StepResult':
       var result = {
         step: this.currentStep,
-        scenario: this.currentScenario
+        scenario: this.currentScenario,
+        feature: this.feature
       };
       var stepResult = event.getPayloadItem('stepResult');
-      if (stepResult.isSuccessful()) {
+      if(stepResult.isSuccessful()) {
         result.status = 'passed';
-      } else if (stepResult.isPending()) {
+      } else if(stepResult.isPending()) {
         result.status = 'pending';
-      } else if (stepResult.isUndefined()) {
+      } else if(stepResult.isUndefined()) {
         result.status = 'undefined';
-      } else if (stepResult.isSkipped()) {
+      } else if(stepResult.isSkipped()) {
         result.status = 'skipped';
       } else {
         var error = stepResult.getFailureException();
@@ -77,24 +78,58 @@ Listener.prototype.hear = function(event, callback) {
   next_listener();
 };
 
-Cucumber.run = function() {
+Cucumber.run = function(callback) {
   console.log('running cucumber tests');
   var results = {};
+  var started = 0, all_started = false;
+
   for(var feature_name in Cucumber.features) {
     console.log('Feature: ' + feature_name);
+    started++;
     var cucumber = Cucumber(Cucumber.features[feature_name], supportCode);
     var listener = new Listener();
     cucumber.attachListener(listener);
     cucumber.start(function() {
       results[feature_name] = listener.results;
-      results[feature_name].feature = listener.feature;
+      if(all_started && --started === 0)
+        callback(results);
     });
   }
-  return results;
+
+  if(started === 0) return callback(results);
+  all_started = true;
 };
 
 Meteor.startup(function() {
   if(location.pathname == CUCUMBER_URL) {
-    Cucumber.run_results = Cucumber.run();
+    var callback;
+    if(_.isFunction(Cucumber.run.after))
+      callback = Cucumber.run.after;
+    else
+      callback = function(results) {Cucumber.run_results = results;};
+    Cucumber.run(callback);
   }
 });
+
+///////////////////////////////////////////////////////////////////////////
+// Then some niceties :-)
+
+Cucumber.MeteorUtils = {
+  logSnippetsToConsole: function(event, callback) {
+    if(event.getName() == 'StepResult') {
+      var stepResult = event.getPayloadItem('stepResult');
+      if(stepResult.isUndefined()) {
+        var builder = Cucumber.SupportCode.StepDefinitionSnippetBuilder(this.currentStep);
+        console.log('Undefined step "' + this.currentStep.getName() +
+                    '". You can define it by pasting this code in one of your .js files:');
+        console.log(builder.buildSnippet());
+      }
+    }
+    callback();
+  },
+
+  digestResults: function(results) {
+    if(results === undefined) results = Cucumber.run_results;
+    return _.groupBy(_.flatten(_.values(results)), 'status');
+  }
+};
