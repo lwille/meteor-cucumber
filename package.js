@@ -17,3 +17,22 @@ Package.on_use(function (api) {
   api.add_files(['support.js'], 'server');
 });
 
+Package.register_extension('feature', function(bundle, srcPath, servePath, where) {
+  if(process.env.NODE_ENV === 'production') return;
+  if(where !== 'client') return;
+
+  var fs = Npm.require('fs');
+  var feature_name = servePath.substr(1);
+  var match = feature_name.match(/^(features\/)?(.*)\.feature$/);
+  if(match)
+    feature_name = match[2];
+
+  console.log('found feature file: ' + srcPath + ' (' + feature_name + ')');
+  bundle.add_resource({
+    type: 'js',
+    data: 'if(Cucumber.features === undefined) Cucumber.features = {}; Cucumber.features["' + feature_name +
+          '"] = ' + JSON.stringify(fs.readFileSync(srcPath, 'utf-8')) + ';',
+    path: servePath,
+    where: where
+  });
+});
