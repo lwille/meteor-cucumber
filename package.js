@@ -5,6 +5,7 @@ Package.describe({
 Npm.depends({"cucumber":"0.3.0"});
 
 Package.on_use(function (api) {
+  // this is basically a placeholder, since Meteor doesn't use *or set* NODE_ENV at all
   if(process.env.NODE_ENV === 'production') return;
 
   var fs = Npm.require('fs'),
